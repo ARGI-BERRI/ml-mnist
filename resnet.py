@@ -1,4 +1,3 @@
-import contextlib
 from argparse import ArgumentParser
 from typing import Any
 
@@ -12,29 +11,19 @@ logger.add(lambda msg: tqdm.tqdm.write(msg, end=""), colorize=True)
 
 
 class Model(torch.nn.Module):
-    """A CNN model for image classification."""
+    """A ResNet18 model for image classification."""
 
     def __init__(self) -> None:
-        super(Model, self).__init__()
-        self.conv_layers = torch.nn.Sequential(
-            torch.nn.Conv2d(1, 32, kernel_size=3, padding=1, bias=False),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(2, 2),
-            torch.nn.Conv2d(32, 64, kernel_size=3, padding=1, bias=False),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(2, 2),
+        super().__init__()
+
+        self.resnet = torchvision.models.resnet18(weights=None)
+        self.resnet.conv1 = torch.nn.Conv2d(
+            1, 64, kernel_size=7, stride=2, padding=3, bias=False
         )
-        self.fc_layers = torch.nn.Sequential(
-            torch.nn.Linear(64 * 7 * 7, 128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128, 10),
-        )
+        self.resnet.fc = torch.nn.Linear(self.resnet.fc.in_features, 10)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.conv_layers(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc_layers(x)
-        return x
+        return self.resnet(x)
 
 
 def get_torch_device() -> torch.device:
@@ -171,6 +160,8 @@ if __name__ == "__main__":
     parser.add_argument("-w", "--num_of_workers", type=int, default=8)
     parser.add_argument("-e", "--epochs", type=int, default=10)
     args = parser.parse_args()
-
-    with contextlib.suppress(KeyboardInterrupt):
-        main(args.batch_size, args.num_of_workers, args.epochs)
+    main(
+        batch_size=args.batch_size,
+        num_of_workers=args.num_of_workers,
+        epochs=args.epochs,
+    )
